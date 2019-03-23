@@ -6,4 +6,4 @@
 
 3. Syntax (prac1b)-- `findCudaDevice`, `cudaMalloc`, `cudaMemcpy` (bidirectional), `cudaFree`, `cudaDeviceReset`
 
-4. Use of `cudaMallocManaged` reduces need of `cudaMalloc`, `cudaMemcpy` H->D (copied when kernel is started) and `cudaMemcpy` D->H (replaced with `cudaDeviceSynchronize`)
+4. Use of `cudaMallocManaged` reduces need of `cudaMalloc`, `cudaMemcpy` H->D (copied when kernel is started) and `cudaMemcpy` D->H (replaced with `cudaDeviceSynchronize`). No need to handle GPU pointers.
