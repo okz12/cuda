@@ -12,13 +12,14 @@
 
 //
 // kernel routine
-// 
+//
 
-__global__ void my_first_kernel(float *x)
+__global__ void my_first_kernel(float *x, float *y)
 {
   int tid = threadIdx.x + blockDim.x*blockIdx.x;
 
-  x[tid] = (float) threadIdx.x;
+  //x[tid] = (float) threadIdx.x;
+  x[tid] = x[tid] + y[tid];
 }
 
 
@@ -28,8 +29,8 @@ __global__ void my_first_kernel(float *x)
 
 int main(int argc, const char **argv)
 {
-  float *x;
-  int   nblocks, nthreads, nsize, n; 
+  float *x, *y;
+  int   nblocks, nthreads, nsize, n;
 
   // initialise card
 
@@ -44,10 +45,18 @@ int main(int argc, const char **argv)
   // allocate memory for array
 
   checkCudaErrors(cudaMallocManaged(&x, nsize*sizeof(float)));
+  checkCudaErrors(cudaMallocManaged(&y, nsize*sizeof(float)));
+
+  x = (float *)malloc(nsize*sizeof(float));
+  y = (float *)malloc(nsize*sizeof(float));
+  for (n=0; n<nsize; n++){
+    x[n] = n;
+    y[n] = 100-n;
+  }
 
   // execute kernel
-  
-  my_first_kernel<<<nblocks,nthreads>>>(x);
+
+  my_first_kernel<<<nblocks,nthreads>>>(x,y);
   getLastCudaError("my_first_kernel execution failed\n");
 
   // synchronize to wait for kernel to finish, and data copied back
@@ -56,7 +65,7 @@ int main(int argc, const char **argv)
 
   for (n=0; n<nsize; n++) printf(" n,  x  =  %d  %f \n",n,x[n]);
 
-  // free memory 
+  // free memory
 
   checkCudaErrors(cudaFree(x));
 
