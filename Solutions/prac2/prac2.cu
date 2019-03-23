@@ -36,7 +36,7 @@ __global__ void pathcalc(float *d_z, float *d_v)
   ind = threadIdx.x + 2*N*blockIdx.x*blockDim.x;
 
   // version 2
-  // ind = 2*N*threadIdx.x + 2*N*blockIdx.x*blockDim.x;
+  //ind = 2*N*threadIdx.x + 2*N*blockIdx.x*blockDim.x;
 
 
   // path calculation
@@ -49,13 +49,13 @@ __global__ void pathcalc(float *d_z, float *d_v)
     // version 1
     ind += blockDim.x;      // shift pointer to next element
     // version 2
-    // ind += 1; 
+    //ind += 1;
 
     y2   = rho*y1 + alpha*d_z[ind];
     // version 1
     ind += blockDim.x;      // shift pointer to next element
     // version 2
-    // ind += 1; 
+    //ind += 1;
 
     s1 = s1*(con1 + con2*y1);
     s2 = s2*(con1 + con2*y2);
@@ -75,7 +75,7 @@ __global__ void pathcalc(float *d_z, float *d_v)
 ////////////////////////////////////////////////////////////////////////
 
 int main(int argc, const char **argv){
-    
+
   int     NPATH=960000, h_N=100;
   float   h_T, h_r, h_sigma, h_rho, h_alpha, h_dt, h_con1, h_con2;
   float  *h_v, *d_v, *d_z;
@@ -128,7 +128,7 @@ int main(int argc, const char **argv){
   checkCudaErrors( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
   checkCudaErrors( curandSetPseudoRandomGeneratorSeed(gen, 1234ULL) );
   checkCudaErrors( curandGenerateNormal(gen, d_z, 2*h_N*NPATH, 0.0f, 1.0f) );
- 
+
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&milli, start, stop);
