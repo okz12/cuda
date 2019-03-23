@@ -9,13 +9,15 @@
 
 //
 // kernel routine
-// 
+//
 
 __global__ void my_first_kernel(float *x)
 {
   int tid = threadIdx.x + blockDim.x*blockIdx.x;
 
   x[tid] = (float) threadIdx.x;
+
+  printf("%d\n",tid);
 }
 
 
@@ -26,11 +28,12 @@ __global__ void my_first_kernel(float *x)
 int main(int argc, char **argv)
 {
   float *h_x, *d_x;
-  int   nblocks, nthreads, nsize, n; 
+  int   nblocks, nthreads, nsize, n;
 
   // set number of blocks, and threads per block
 
   nblocks  = 2;
+  //nblocks = 0; //no error and no output
   nthreads = 8;
   nsize    = nblocks*nthreads ;
 
@@ -49,7 +52,7 @@ int main(int argc, char **argv)
 
   for (n=0; n<nsize; n++) printf(" n,  x  =  %d  %f \n",n,h_x[n]);
 
-  // free memory 
+  // free memory
 
   cudaFree(d_x);
   free(h_x);
