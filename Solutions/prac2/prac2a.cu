@@ -12,6 +12,7 @@
 #include <curand_kernel.h>
 #include <helper_cuda.h>
 #define seed 123
+#define BLOCKSIZE 64
 
 ////////////////////////////////////////////////////////////////////////
 // CUDA global constants
@@ -23,8 +24,9 @@ __constant__ int NUM;
 ////////////////////////////////////////////////////////////////////////
 // kernel for averaging az^2 + bz + c
 ////////////////////////////////////////////////////////////////////////
-__global__ void avg_eq(float *x)
+__global__ void avg_eq(float *x, float *o)
 {
+  float total = 0;
   int tid = threadIdx.x + blockDim.x*blockIdx.x;
   curandState randState;
   curand_init(seed, tid, 0, &randState);
@@ -32,28 +34,22 @@ __global__ void avg_eq(float *x)
   float z = curand_normal(&randState);
   x[tid] = (a*a*z + b*z + c)/NUM;
 
-  //sequential addressing add
-}
+  __syncthreads();
 
-__global__ void reduce(float *x, float *o)
-{
-  int tid = threadIdx.x + blockDim.x*blockIdx.x;
-  int s;
-  for (s=1; s < blockDim.x; s *= 2) {
-    int index = 2 * s * tid;
-    if (index < blockDim.x) {
-      x[index] += x[index + s];
+  if (threadIdx.x == 0)
+  {
+    for (int s=tid; s<tid + blockDim.x; s++)
+    {
+      total += x[s];
     }
-    __syncthreads();
+    o[blockIdx.x] = total;
+    //printf("%d %d: %f\n", tid, tid+blockDim.x, total);
   }
-  if (threadIdx.x == 0){
-    o[blockIdx.x] = x[tid];
-    printf("%f\n",x[tid]);
+  else
+  {
+    o[tid] = 0;
   }
-  printf("gridDim: %d %d, threadIdx: %d %d, blockIdx: %d %d, blockDim: %d %d, x: %f, o: %f, %d\n",
-  gridDim.x, gridDim.y, threadIdx.x, threadIdx.y, blockIdx.x, blockIdx.y, blockDim.x, blockDim.y, x[tid], o[tid], s);
 }
-
 
 ////////////////////////////////////////////////////////////////////////
 // Main program
@@ -64,7 +60,7 @@ int main(int argc, const char **argv){
   float   h_a, h_b, h_c;
   int     h_NUM;
   float   *h_x, *h_o, *d_x, *d_o;
-  h_NUM = 256;
+  h_NUM = 64;
   // initialise card
 
   findCudaDevice(argc, argv);
@@ -79,10 +75,10 @@ int main(int argc, const char **argv){
   // allocate memory on host and device
 
   h_x = (float *)malloc(sizeof(float)*h_NUM);
-  h_o = (float *)malloc(sizeof(float)*h_NUM);
+  h_o = (float *)malloc(sizeof(float)*h_NUM/BLOCKSIZE);
 
   checkCudaErrors( cudaMalloc((void **)&d_x, sizeof(float)*h_NUM) );
-  checkCudaErrors( cudaMalloc((void **)&d_o, sizeof(float)*h_NUM) );
+  checkCudaErrors( cudaMalloc((void **)&d_o, sizeof(float)*h_NUM/BLOCKSIZE) );
 
   h_a = 5.0f;
   h_b = 10.0f;
@@ -97,10 +93,8 @@ int main(int argc, const char **argv){
 
   cudaEventRecord(start);
 
-  avg_eq<<<h_NUM/64, 64>>>(d_x);
+  avg_eq<<<h_NUM/64, 64>>>(d_x, d_o);
   getLastCudaError("avg_eq execution failed\n");
-  reduce<<<h_NUM/64, 64>>>(d_x, d_o);
-  getLastCudaError("reduce execution failed\n");
 
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
@@ -112,7 +106,7 @@ int main(int argc, const char **argv){
 
   checkCudaErrors( cudaMemcpy(h_x, d_x, sizeof(float)*h_NUM,
                    cudaMemcpyDeviceToHost) );
- checkCudaErrors( cudaMemcpy(h_o, d_o, sizeof(float)*h_NUM,
+ checkCudaErrors( cudaMemcpy(h_o, d_o, sizeof(float)*h_NUM/BLOCKSIZE,
                   cudaMemcpyDeviceToHost) );
 
   // compute average
@@ -123,7 +117,7 @@ int main(int argc, const char **argv){
   }
 
   float sum2 = 0.0;
-  for (int i=0; i<h_NUM; i++) {
+  for (int i=0; i<h_NUM/BLOCKSIZE; i++) {
     sum2 += h_o[i];
   }
 
